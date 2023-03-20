@@ -1,0 +1,385 @@
+Reference : 'https://training.galaxyproject.org/training-material/topics/data-science/tutorials/bash-variant-calling/tutorial.html'
+
+# Objective of the workflow is to analyse how the ecoli population has changed overtime. We will use alignment to compare between ecoli population.
+
+# The program galaxy will be run in Rstudio.
+- Miniconda is given to install all the required libraries
+- New environment needs to be made using conda
+
+Q. How to pull images for each tool from internet?
+------------------
+- Open galaxy and Run Rstudio
+- Run the following command in terminal of Rstudio to create a new environment and activate it.
+'$ conda create -n name_of_environment bwa samtools bcftools
+ $ conda activate name_of_environment'
+
+
+-----------------
+In this procedure Burrows Wheeler Aligner (bwa) is used.
+
+- BWA is a tool for mapping low divergent sequences (lds) against large reference genomes like that of the humans. 
+- lds are sequences that do not vary much across individuals and species. This also means that the sequence has not evolved much over long periods.
+- lds help in alignment of large sequences as they act as reference points.
+- bwa-mem is the latest and the fastest tool in bwa
+- bwa-index is the first step for indexing reference genome
+- bwa-mem is the second step for aligning reference genome and sampled sequences which are in fastq format.
+- bwa-mem outputs a alignment file. Whereas bwa-index outputs an index file. 
+
+
+# Alignment process consists of two steps
+1. Indexing the reference genome
+2. Aligning the reads to the reference genome
+
+
+Q What is indexing?
+- Indexing genome is same as book. It allows us to tell which gene is located at which location of the file. This is gone when the files are large inorder to save processing power.
+
+# Syntax for indexing
+
+$ bwa index file.fasta
+
+---------------------
+
+# Setting Up
+# Downloading Reference Genome of ecoli
+
+'$ cd ~/dc_workshop'
+Q Should dc_workshop be made before hand?
+
+'$ mkdir -p data/ref_genome'
+- p stands for making multiple/heirarchial directories 
+
+'$ curl -L -o data/ref_genome/ecoli_rel606.fasta.gz ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/017/985/GCA_000017985.1_ASM1798v1/GCA_000017985.1_ASM1798v1_genomic.fna.gz '
+- curl is used to transfer data from/to servers using HTTPS or FTP
+- L . If server reports that the file is in a different location, -L will allow the file to reattemp from a new location
+- o. This writes the output into the file rather than showing stdout
+
+'$ gunzip data/ref_genome/ecoli_rel606.fasta.gz'
+- gunzip/gzip is the tool for compression and decompression
+
+
+----------------------
+# Downloading trimmed FastQ files for faster operations
+
+$ curl -L -o sub.tar.gz https://ndownloader.figshare.com/files/14418248
+$ tar xvf sub.tar.gz
+- tar, it stores and extracts files from tape or disk archive.
+
+$ mv sub/ ~/dc_workshop/data/trimmed_fastq_small
+
+----------------------
+
+# Creating result directories
+
+$ mkdir -p results/sam results/bam results/bcf results/vcf
+
+----------------------
+- Next step would be indexing. Indexing allows aligner to quickly identify potential alignment sites for query sequences and this saves a lot of time. 
+- Indexing the reference genome has to be done only once. It needs to be done again only when the reference genome or the alignment tool is changed.
+
+>>In this procedure Burrows Wheeler Aligner (bwa) is used.
+
+$ 'bwa index data/ref_genome/ecoli_rel606.fasta'
+
+- bwa-index is the first step for indexing reference genome
+- bwa-index outputs an index file.
+
+Expected output-
+[bwa_index] Pack FASTA... 0.04 sec
+[bwa_index] Construct BWT for the packed sequence...
+[bwa_index] 1.05 seconds elapse.
+[bwa_index] Update BWT... 0.03 sec
+[bwa_index] Pack forward-only FASTA... 0.02 sec
+[bwa_index] Construct SA from BWT and Occ... 0.57 sec
+[main] Version: 0.7.17-r1188
+[main] CMD: bwa index data/ref_genome/ecoli_rel606.fasta
+[main] Real time: 1.765 sec; CPU: 1.715 sec
+
+----------------------
+# Selecting tool performing alignment
+- Here for this process we will select BWA-MEM algorithm/tool
+
+$ bwa mem ref_genome.fasta input_file_R1.fastq input_file_R2.fastq > output.sam
+
+OR
+home/data> $ bwa mem ref_genome/ecoli_rel606.fasta trimmed_fastq_small/SRR2584866_1.trim.sub.fastq trimmed_fastq_small/SRR2584866_2.trim.sub.fastq > results/sam/SRR2584866.aligned.sam
+
+- BWA is a tool for mapping low divergent sequences (lds) against large reference genomes like that of the humans. 
+- lds are sequences that do not vary much across individuals and species. This also means that the sequence has not evolved much over long periods.
+- lds help in alignment of large sequences as they act as reference points.
+- bwa-mem is the latest and the fastest tool in bwa
+
+- bwa-mem is the second step for aligning reference genome(index fasta format) and sampled sequences which are in fastq format.
+- bwa-mem outputs a alignment file. Whereas  
+
+
+Expected output..
+[M::bwa_idx_load_from_disk] read 0 ALT contigs
+[M::process] read 77446 sequences (10000033 bp)...
+[M::process] read 77296 sequences (10000182 bp)...
+[M::mem_pestat] # candidate unique pairs for (FF, FR, RF, RR): (48, 36728, 21, 61)
+[M::mem_pestat] analyzing insert size distribution for orientation FF...
+[M::mem_pestat] (25, 50, 75) percentile: (420, 660, 1774)
+[M::mem_pestat] low and high boundaries for computing mean and std.dev: (1, 4482)
+[M::mem_pestat] mean and std.dev: (784.68, 700.87)
+[M::mem_pestat] low and high boundaries for proper pairs: (1, 5836)
+[M::mem_pestat] analyzing insert size distribution for orientation FR...
+
+------------------------
+# SAM/ BAM format
+
+- They are alignment files
+- The compressed binary version of the sam file is called bam file
+- SAM files are composed of alignment lines
+- Each alignment line is made of 11 parts
+
+# Converting SAM file to BAM file using view option in samtools
+$ samtools view -S -b results/sam/SRR2584866.aligned.sam > results/bam/SRR2584866.aligned.bam
+
+-s represents that the input is sam file and -b represents that the output is bam file.
+
+-----------------------
+# Next step is sorting of BAM files
+Q. why do we need to sort files?
+- Because they facilitate downstream analysis. Many tools require the bam file to be sorted in order process them
+- Sorting also improves computational efficiency.
+
+$ 'samtools sort -o results/bam/SRR2584866.aligned.sorted.bam results/bam/SRR2584866.aligned.bam'
+-o , specifies the output file.
+
+-----------------------
+
+# Getting statistics for the sorted bam file using samtools
+$ samtools flagstat results/bam/SRR2584866.aligned.sorted.bam
+
+Expected output..
+351169 + 0 in total (QC-passed reads + QC-failed reads)
+0 + 0 secondary
+1169 + 0 supplementary
+0 + 0 duplicates
+351103 + 0 mapped (99.98% : N/A)
+350000 + 0 paired in sequencing
+175000 + 0 read1
+175000 + 0 read2
+346688 + 0 properly paired (99.05% : N/A)
+349876 + 0 with itself and mate mapped
+58 + 0 singletons (0.02% : N/A)
+0 + 0 with mate mapped to a different chr
+0 + 0 with mate mapped to a different chr (mapQ> =5)
+
+
+---------------------------
+# Variant calling
+- Variant calling is the conclusion that there is difference between the reference genome and the sample sequences. They are often reffered to as 
+single nucleotide variant (SNV) . 
+- The output is variant frequency with some measure of confidence.
+- We will be using bcftools for this procedure.
+
+$ 'bcftools mpileup -O b -o results/bcf/SRR2584866_raw.bcf -f data/ref_genome/ecoli_rel606.fasta results/bam/SRR2584866.aligned.sorted.bam'
+
+- bcftools mpliup, it takes multiple alignment files ( BAM or CRAM format) and a reference genome in fasta format.
+- then mpileup performs pileup of reads at each position. It contains info like identity of nucleotide and read quality of each base.
+- mpileup then calls variants such as single nucleotide polymorphisms (SNPs). The output file is called Binary Variant Call Format (BCF)
+- VCF contains all the info about variants and their positions.
+ 
+# We have now generated a file with coverage information for every base.
+
+------------------------------
+
+# Detecting Single Nucleotide Variants from VCF file.
+
+'$ bcftools call --ploidy 1 -m -v -o results/vcf/SRR2584866_variants.vcf results/bcf/SRR2584866_raw.bcf'
+
+- call, identify SNV using this.
+- ploidy: Refers to the set of chromosomes present in nucleus. Human cells are diploid and their polidy is 2.
+- m : It allows for multiallelic and rare variant calling
+- v : it tells the program to output only variant sites.
+- o : ouput file location.
+
+Here the output file is VCF
+
+------------------------------
+
+# Filter and report the SNV variants in variant calling format (VCF)
+
+'$ vcfutils.pl varFilter results/vcf/SRR2584866_variants.vcf  > results/vcf/SRR2584866_final_variants.vcf'
+
+- vcffutils.pl filters out SNVs
+
+--------------------------------
+
+# Exploring VCF files
+
+'$ less -S results/vcf/SRR2584866_final_variants.vcf'
+-S, this chops long lines that do not fit into the screen rather than wrapping them.
+
+Sample output..
+fileformat=VCFv4.2
+FILTER<ID=PASS,Description="All filters passed">
+bcftoolsVersion=1.8+htslib-1.8
+bcftoolsCommand=mpileup -O b -o results/bcf/SRR2584866_raw.bcf -f data/ref_genome/ecoli_rel606.fasta results/bam/SRR2584866.aligned.sorted.bam
+reference=file://data/ref_genome/ecoli_rel606.fasta
+contig<ID=CP000819.1,length=4629812>
+ALT<ID=*,Description="Represents allele(s) other than observed.">
+INFO<ID=INDEL,Number=0,Type=Flag,Description="Indicates that the variant is an INDEL.">
+INFO<ID=IDV,Number=1,Type=Integer,Description="Maximum number of reads supporting an indel">
+INFO<ID=IMF,Number=1,Type=Float,Description="Maximum fraction of reads supporting an indel">
+
+Followed by information on each of the variations observed:
+
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  results/bam/SRR2584866.aligned.sorted.bam
+CP000819.1      1521    .       C       T       207     .       DP=9;VDB=0.993024;SGB=-0.662043;MQSB=0.974597;MQ0F=0;AC=1;AN=1;DP4=0,0,4,5;MQ=60
+CP000819.1      1612    .       A       G       225     .       DP=13;VDB=0.52194;SGB=-0.676189;MQSB=0.950952;MQ0F=0;AC=1;AN=1;DP4=0,0,6,5;MQ=60
+CP000819.1      9092    .       A       G       225     .       DP=14;VDB=0.717543;SGB=-0.670168;MQSB=0.916482;MQ0F=0;AC=1;AN=1;DP4=0,0,7,3;MQ=60
+CP000819.1      9972    .       T       G       214     .       DP=10;VDB=0.022095;SGB=-0.670168;MQSB=1
+
+# For metadata on column names visit - https://training.galaxyproject.org/training-material/topics/data-science/tutorials/bash-variant-calling/tutorial.html#:~:text=column,this%20variant%20failed
+
+-------------------------------
+
+# Assess the alignment (visualization) 
+
+- We will use Integrative Genomics Viewer (IGV) for this part.
+- In order to visualize, we need to index the bam file.
+'$ samtools index results/bam/SRR2584866.aligned.sorted.bam'
+
+# Viewing with tview
+
+'$ samtools tview results/bam/SRR2584866.aligned.sorted.bam data/ref_genome/ecoli_rel606.fasta'
+- We give 2 inputs, sorted bam file and reference file.
+
+'Sample output...
+1         11        21        31        41        51        61        71        81        91        101       111       121
+AGCTTTTCATTCTGACTGCAACGGGCAATATGTCTCTGTGTGGATTAAAAAAAGAGTGTCTGATAGCAGCTTCTGAACTGGTTACCTGCCGTGAGTAAATTAAAATTTTATTGACTTAGGTCACTAAATAC
+..................................................................................................................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ..................N................. ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,........................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ..................N................. ,,,,,,,,,,,,,,,,,,,,,,,,,,,.............................
+...................................,g,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,  ....................................   ................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,....................................   ....................................      ,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,  ....................................  ,,a,,,,,,,,,,,,,,,,,,,,,,,,,,,,,     .......
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, .............................  ,,,,,,,,,,,,,,,,,g,,,,,    ,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,  ...........................T.......   ,,,,,,,,,,,,,,,,,,,,,,,c,          ......
+......................... ................................   ,g,,,,,,,,,,,,,,,,,,,      ...........................
+,,,,,,,,,,,,,,,,,,,,, ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ,,,,,,,,,,,,,,,,,,,,,,,,,,,       ..........................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,   ................................T..  ..............................   ,,,,,,'
+
+
+- type g in the dialouge box, enter the chromose_name.1:50
+- This will give the variations at position 50.
+
+
+-------------------------------------
+# Viewing with IGV
+
+- Download these files in Rstudio
+~/dc_workshop/results/bam/SRR2584866.aligned.sorted.bam 
+~/dc_workshop/results/bam/SRR2584866.aligned.sorted.bam.bai 
+~/dc_workshop/data/ref_genome/ecoli_rel606.fasta 
+~/dc_workshop/results/vcf/SRR2584866_final_variants.vcf 
+
+- Downlaod IGV and load bam, reference and VCF file in it.
+- We will get the visualization. Visit IGV website to learn more about GUI and its meaning.
+
+
+DONE !!!!!!!!!!!!!!
+
+-------------------------------
+EXTRA ..
+
+Name of environment - variance_analysis
+
+
+--------------------------------
+' All 3 tools are downloaded 
+- Next steps are: '
+ 
+- Run the commands of each tool in their respective shell and then get a commmon output.
+
+
+
+-------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
