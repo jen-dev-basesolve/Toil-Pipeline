@@ -1,0 +1,241 @@
+/* OS library
+OS - It is a library used to interact with the OS or computer itself.
+	 Its functions include:
+	 - Opening a directory
+	 - creatin a dir
+	 - deleting a dir
+	 - showing error 
+
+*/	
+
+import os
+
+-------------------------------
+
+/* tempfile library
+
+tempfile - It is a library used to create temporary files. Temp files are created when large amounts of data is to be processed.
+            These files are deleted after their work is done.
+*/
+
+import tempfile
+
+-------------------------------
+
+from toil.common impor toil
+
+# assuming here toil.common is the parent library from which we import toil
+
+------------------------------
+from toil.job import job
+
+
+
+
+------------------------------
+# What is initialization ?
+
+>> Initialization is assingment of initial values to a variable
+
+-----------------------------
+
+# Constructors
+
+Constructors are like methods, only difference is that they dont return anything.
+Constructors are used for initialisation of the objects.
+
+# In python constructors are used to instantiate variable that are used in other methods. Two types of constructors, default and parameterized.
+
+
+# default constructor
+class people:
+    
+    # init method or constructor
+    def __init__(self,name):
+        self.age = name
+        
+    def my_details(self):
+        print("my name is" , self.name)
+        
+
+person = people('jenith')
+person.my_details()
+
+>> my name is jenith
+
+-----------------------------
+# Parameterized constructor. In this type of constructor parameters are initialized.
+
+class Addition:
+    first = 0
+    second = 0
+    answer = 0
+ 
+    # parameterized constructor
+    def __init__(self, f, s):
+        self.first = f
+        self.second = s
+ 
+    def display(self):
+        print("First number = " + str(self.first))
+        print("Second number = " + str(self.second))
+        print("Addition of two numbers = " + str(self.answer))
+ 
+    def calculate(self):
+        self.answer = self.first + self.second
+ 
+ 
+# creating object of the class
+# this will invoke parameterized constructor
+obj1 = Addition(1000, 2000)
+obj1.display()
+obj1.calculate()
+
+>> First number = 1000
+   Second number = 2000
+   3000 
+    
+    
+# What is constructor overide
+It is used when all properties of parent are not required in child class. Super() can be used for this purpose.
+
+-----------------------------
+# Sample toil programs
+
+import os
+import tempfile
+
+from toil.common import Toil
+from toil.job import Job
+
+
+def helloWorld(message, memory="2G", cores=2, disk="3G"):
+    return f"Hello, world!, heres a message: {message}"
+
+def second_function(a,b,memory="2G", cores=2, disk="3G"):
+    return (a*b)
+
+if __name__ == "__main__":
+    jobstore: str = tempfile.mkdtemp("tutorial_quickstart") # tempfile.mkdtemp() makes a temporary directory.
+                                                            # What does " jobstore: str = " do? 
+    os.rmdir(jobstore)                                      # os.rmdir removes a directory. 
+                                                            # rmdir() takes path as input, I am assuming jobstore from above line saves the path of the temporary file.
+    options = Job.Runner.getDefaultOptions(jobstore)        # Job.Runner.getDefaultOptions takes in jobstore as input. 
+                                                            # And returns options used by toil workflow as output in the form of argparse.Arguments 
+    options.logLevel = "OFF"                                # when logLevel=OFF, only critical logs are shown
+    options.clean = "always"                                # when clean = "always" the jobstore is deleted after completion. By default it is "never"
+
+    hello_job = Job.wrapFn(helloWorld, "Woot")              # wrapFn is used to wrap the function, similar to decorators.
+                                                            # Job.wrapFn(function,arguments).
+                                                            # wrapFn has two arguments, 1st is the name of the function, 2nd is the inputs to that function
+    second_job = Job.wrapFn(second_function,5,3)
+    
+    with Toil(options) as toil:                             # basically toil = Toil(options)
+        print(toil.start(hello_job))                        # toil.start initiates toil workflow. Takes rootJob as input. Returns job value
+        # prints "Hello, world!, ..." 
+
+        print(toil.start(second_job))
+        # prints 15
+        
+OUTPUT:
+>> 
+Workflow Progress 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 (0 failures) [00:00<00:00, 4.64 jobs/s]
+Hello, world!, heres a message: Eeehh....hannnn
+
+Workflow Progress 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 (0 failures) [00:00<00:00, 4.37 jobs/s]
+15
+
+
+# Steps involved in toil workflow
+
+1) Define methods
+2) Assign Jobs to them
+  
+
+---------------------------------------------------------
+# Next questions
+
+1) What are child jobs?
+2) What is the difference between Run and start in a job
+
+
+----------------------------------------------------
+# Toil example 2
+from toil.job import Job
+
+class HelloWorld(Job):
+    def __init__(self,message):
+        Job.__init__(self,  memory="2G", cores=2, disk="3G")
+        self.message = message
+        
+    def run(self,filestore):
+        return f"Hello world, here is the message: {self.message}"
+    
+if __name__=='__main__':
+    jobstore: str = tempfile.mkdtemp("tutorial_invokeworkflow")
+    os.rmdir(jobstore)
+    options = Job.Runner.getDefaultOptions(jobstore)
+    options.logLevel = "OFF"
+    options.clean = "always"
+
+    hello_job = HelloWorld("Woot")          # jobs can be assigned directly like here, earlier example used wrapFn
+
+    with Toil(options) as toil:
+        print(toil.start(hello_job))     
+
+-------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
