@@ -1,7 +1,7 @@
 from toil.common import Toil
 from toil.job import Job
 import os
-import tempfile
+import tempfile 
 import requests
 import shlex
 import subprocess
@@ -13,7 +13,7 @@ def main(job,memory="2G", cores=2, disk="3G"):
 
 
 def ref_genome(job):
-    parent_dir = '/home/bioinfo/singularity/variant_analysis'
+    parent_dir = '/home/bioinfo/test_toil/variant_analysis'
     child_dir = 'dc_workshop_1/data/ref_genome'
     path = os.path.join(parent_dir,child_dir)
     os.makedirs(path,exist_ok=True)
@@ -109,12 +109,16 @@ def index_fastq(job,path,memory="2G", cores=2, disk="3G"):
 
 
 if __name__=='__main__':
-    jobstore: str = tempfile.mkdtemp("test")
-    os.rmdir(jobstore)
-    options = Job.Runner.getDefaultOptions(jobstore)
+    parser = Job.Runner.getDefaultArgumentParser()
+    options = parser.parse_args()
     options.logLevel='INFO'
+    options.clean='always'
 
     j1 = Job.wrapJobFn(main)
 
     with Toil(options) as toil:
-        print(toil.start(j1))
+        if  not toil.options.restart:
+            print(toil.start(j1))
+        else:
+            print(toil.restart())
+        

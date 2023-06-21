@@ -277,6 +277,136 @@ toil.start is used to initiate the whole workflow.
 # Should they return somethings to other functions?
 
 
+---------------------------------
+# jobs are way of calling out functions
+# Multiple jobs can call out a single function with different inputs.
+
+------------------------------------
+def parentJob(job):
+    downloadJob = Job.wrapJobFn(stageFn, "file://" + os.path.realpath(__file__), cores=0.1, memory='32M', disk='1M')
+    job.addChild(downloadJob)
+
+    analysis = Job.wrapJobFn(analysisJob,
+                             fileStoreID=downloadJob.rv(0), # This should give importedfile name
+                             disk=PromisedRequirement(downloadJob.rv(1))) # this should give the size of the importedfile
+    job.addFollowOn(analysis) 
+
+
+def stageFn(job, url, cores=1):
+    importedFile = job.fileStore.import_file(url)
+    return importedFile, importedFile.size
+
+
+def analysisJob(job, fileStoreID, cores=2):
+    # now do some analysis on the file
+    pass
+
+
+if __name__ == "__main__":
+    jobstore: str = tempfile.mkdtemp("tutorial_requirements")
+    os.rmdir(jobstore)
+    options = Job.Runner.getDefaultOptions(jobstore)
+    options.logLevel = "INFO"
+    options.clean = "always"
+
+    with Toil(options) as toil:
+        toil.start(Job.wrapJobFn(parentJob))
+
+
+
+------------------------------------------
+------------------------------------------
+------------------------------------------
+------------------------------------------
+
+Docker in toil
+
+
+example of docker call
+
+dockerCall(job=job,
+            tool='quay.io/ucsc_cgl/bwa',
+            workDir=job.tempDir,
+            parameters=['index', '/data/reference.fa'])
+            
+
+-----------------------------------------
+docker call can be added to workflows like :-
+
+import os
+import tempfile
+
+from toil.common import Toil
+from toil.job import Job
+from toil.lib.docker import apiDockerCall
+
+align = Job.wrapJobFn(apiDockerCall,
+                      image='ubuntu',
+                      working_dir=os.getcwd(),
+                      parameters=['ls', '-lha'])
+
+if __name__ == "__main__":
+    jobstore: str = tempfile.mkdtemp("tutorial_docker")
+    os.rmdir(jobstore)
+    options = Job.Runner.getDefaultOptions(jobstore)
+    options.logLevel = "INFO"
+    options.clean = "always"
+
+    with Toil(options) as toil:
+        toil.start(align)
+
+
+
+----------------------------------
+Link to python library for using Docker API - 'https://docker-py.readthedocs.io/en/stable/'
+ else blocks is toil.options.restart.
+
+For example:
+
+import os
+import tempfile
+----------------
+
+Toil is a meta scheduler, whereas slurm is a complete scheduler
+
+----------------
+Batch system command line options
+
+--batchSystem <slurm,aws-bacth,torque,kubernetes>
+# to mention which batch system to use
+
+-----------------
+Run a toil script using slurm
+$ python test.py file:my-job-store --batchSystem slurm --disableCaching --stats
+
+# --stats will save the stats in jobstore created, for this to work, the job store should not be cleaned
+
+
+-------------------
+Check statistics in tabular form
+$ toil stats file:my-job-store
+
+-------------------------------
+Running toil from command line
+
+$ python test.py my_job_store
+
+
+-------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
